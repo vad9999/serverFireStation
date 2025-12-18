@@ -124,7 +124,6 @@ class DriverLicense(SoftDeleteModel):
     def __str__(self):
 	    return f"{self.number}"
     
-
 class User(SoftDeleteModel):
     name = models.CharField(max_length=40, null=False)
     surname = models.CharField(max_length=40, null=False)
@@ -136,13 +135,64 @@ class User(SoftDeleteModel):
 	
     rank = models.ForeignKey(Rank, on_delete=models.CASCADE, null=False, related_name='rank')
     role = models.ForeignKey(Role, on_delete=models.CASCADE, null=False, related_name='role')
-    driver_license = models.ForeignKey(DriverLicense, on_delete=models.CASCADE, related_name='license')
+    driver_license = models.OneToOneField(DriverLicense, on_delete=models.CASCADE, related_name='license')
     
     def __str__(self):
 	    return f"{self.name} - {self.surname} - {self.last_name} - {self.login}"
     
 class RequiredRole(SoftDeleteModel):
-    role = models.OneToOneField(Role, on_delete=models.CASCADE, primary_key=True, related_name='role')
+    role = models.OneToOneField(Role, on_delete=models.CASCADE, primary_key=True, related_name='role', null=False)
 
 class Waybill(SoftDeleteModel):
-    pass
+    date = models.DateField(null=False)
+    from_date = models.DateField(null=False)
+    for_date = models.DateField(null=False)
+
+class Signatures(SoftDeleteModel):
+    required_role = models.ForeignKey(RequiredRole, null=False, on_delete=models.CASCADE, primary_key=True, related_name='role')
+    waybill = models.ForeignKey(Waybill, null=False, on_delete=models.CASCADE, primary_key=True, related_name='waybill')
+    user = models.ForeignKey(User, null=False, on_delete=models.CASCADE, related_name='user')
+
+    def __str__(self):
+        return f"{self.required_role} - {self.waybill} - {self.user}"
+    
+class Car(SoftDeleteModel):
+    number = models.CharField(max_length=9, unique=True, null=False)
+    brand = models.CharField(max_length=30, null=False, help_text='марка машины')
+    model = models.CharField(max_length=60, null=False)
+
+class PassengerCar(SoftDeleteModel):
+    odometer = models.DecimalField(max_digits=7, decimal_places=2, help_text='показание одометра', null=False)
+    fuel = models.DecimalField(max_digits=3, decimal_places=3, help_text='показания топлива перед выездом', null=False)
+
+    winter_area = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по области', null=False)
+    winter_city = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по городу', null=False)
+    summer_area = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по области', null=False)
+    summer_city = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по городу', null=False)
+
+    car = models.OneToOneField(Car, on_delete=models.CASCADE, null=False)
+
+class FireTruck(SoftDeleteModel):
+    odometer = models.DecimalField(max_digits=7, decimal_places=2, help_text='показание одометра', null=False)
+    type = models.CharField(max_length=60, null=False)
+    fuel = models.DecimalField(max_digits=3, decimal_places=3, help_text='показания топлива перед выездом', null=False)
+
+    winter_km = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по км', null=False)
+    winter_without_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой без насоса', null=False)
+    winter_with_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой с насосом', null=False)
+    summer_km = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по км', null=False)
+    summer_without_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом без насоса', null=False)
+    summer_with_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом с насосом', null=False)
+
+    car = models.OneToOneField(Car, on_delete=models.CASCADE, null=False)
+    
+class PassengerCarWaybill(SoftDeleteModel):
+    waybill = models.OneToOneField(Waybill, on_delete=models.CASCADE, null=False)
+
+class FireTruckWaybill(SoftDeleteModel):
+    waybill = models.OneToOneField(Waybill, on_delete=models.CASCADE, null=False)
+
+class FireTruckWaybillRecord(SoftDeleteModel):
+    date = models.DateField(null=False)
+    name = models.CharField(max_length=255, null=False)
+    
