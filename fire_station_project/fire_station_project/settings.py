@@ -85,6 +85,16 @@ DATABASES = {
     }
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'fuel.auth.JWTAuthentication',  # <--- имя твоего приложения
+        # можно добавить другие схемы (SessionAuthentication и т.п., если нужно)
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # по умолчанию требуем логин
+    ],
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
