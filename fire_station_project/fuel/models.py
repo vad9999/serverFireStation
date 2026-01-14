@@ -162,37 +162,366 @@ class Car(SoftDeleteModel):
     model = models.CharField(max_length=60, null=False)
 
 class PassengerCar(SoftDeleteModel):
-    odometer = models.DecimalField(max_digits=7, decimal_places=2, help_text='показание одометра', null=False)
-    fuel = models.DecimalField(max_digits=3, decimal_places=3, help_text='показания топлива перед выездом', null=False)
+    # Текущее показание одометра легкового авто (км)
+    odometer = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Текущее показание одометра, км",
+    )
 
-    winter_area = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по области', null=False)
-    winter_city = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по городу', null=False)
-    summer_area = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по области', null=False)
-    summer_city = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по городу', null=False)
+    # Текущее количество топлива в баке перед последним выездом (л)
+    fuel = models.DecimalField(
+        max_digits=8,         # до 99999.999 л
+        decimal_places=3,
+        null=False,
+        help_text="Показания топлива перед выездом, л",
+    )
 
-    car = models.OneToOneField(Car, on_delete=models.CASCADE, null=False)
+    # ===== НОРМЫ РАСХОДА ПО МАРШРУТАМ (зима) =====
+
+    # Норма расхода зимой по ОБЛАСТИ, л/км (или л/100 км — как у вас по методике)
+    winter_area = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода зимой по области, л/км",
+    )
+
+    # Норма расхода зимой по ГОРОДУ, л/км
+    winter_city = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода зимой по городу, л/км",
+    )
+
+    # ===== НОРМЫ РАСХОДА (лето) =====
+
+    # Норма расхода летом по ОБЛАСТИ, л/км
+    summer_area = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода летом по области, л/км",
+    )
+
+    # Норма расхода летом по ГОРОДУ, л/км
+    summer_city = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода летом по городу, л/км",
+    )
+
+    # Связь с базовой машиной (шасси, номер и т.п.)
+    car = models.OneToOneField(
+        Car,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="passenger_car",
+        help_text="Базовый автомобиль, к которому относится эта легковая машина",
+    )
+
+    def __str__(self):
+        return f"{self.car.number} (легковой)"
 
 class FireTruck(SoftDeleteModel):
-    odometer = models.DecimalField(max_digits=7, decimal_places=2, help_text='показание одометра', null=False)
-    type = models.CharField(max_length=60, null=False)
-    fuel = models.DecimalField(max_digits=3, decimal_places=3, help_text='показания топлива перед выездом', null=False)
+    # Текущее показание одометра (км).
+    # Можно обновлять по последней записи карточки.
+    odometer = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Текущее показание одометра, км",
+    )
 
-    winter_km = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой по км', null=False)
-    winter_without_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой без насоса', null=False)
-    winter_with_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода зимой с насосом', null=False)
-    summer_km = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом по км', null=False)
-    summer_without_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом без насоса', null=False)
-    summer_with_pump = models.DecimalField(max_digits=2, decimal_places=3, help_text='норма расхода летом с насосом', null=False)
+    # Тип пожарного автомобиля (АЦ-3,2-40 и т.п.)
+    type = models.CharField(
+        max_length=60,
+        null=False,
+        help_text="Тип пожарного автомобиля",
+    )
 
-    car = models.OneToOneField(Car, on_delete=models.CASCADE, null=False)
+    # Текущее количество топлива в баке (на момент последнего выезда), л
+    fuel = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=False,
+        help_text="Показания топлива перед последним выездом, л",
+    )
+
+    # ===== НОРМЫ РАСХОДА ЗИМОЙ =====
+
+    # Норма по пробегу зимой, л/км
+    winter_km = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода зимой по пробегу, л/км",
+    )
+
+    # Норма зимой без насоса, л/ед.времени (например, л/мин или л/час)
+    winter_without_pump = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода зимой без насоса, л/ед.времени",
+    )
+
+    # Норма зимой с насосом, л/ед.времени
+    winter_with_pump = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода зимой с насосом, л/ед.времени",
+    )
+
+    # ===== НОРМЫ РАСХОДА ЛЕТОМ =====
+
+    # Норма по пробегу летом, л/км
+    summer_km = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода летом по пробегу, л/км",
+    )
+
+    # Норма летом без насоса, л/ед.времени
+    summer_without_pump = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода летом без насоса, л/ед.времени",
+    )
+
+    # Норма летом с насосом, л/ед.времени
+    summer_with_pump = models.DecimalField(
+        max_digits=5,
+        decimal_places=3,
+        null=False,
+        help_text="Норма расхода летом с насосом, л/ед.времени",
+    )
+
+    # Связь с базовым автомобилем (шасси)
+    car = models.OneToOneField(
+        Car,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="fire_truck",
+        help_text="Базовый автомобиль, на шасси которого выполнен пожарный",
+    )
     
 class PassengerCarWaybill(SoftDeleteModel):
-    waybill = models.OneToOneField(Waybill, on_delete=models.CASCADE, null=False)
+    # Связь 1:1 с общим путевым листом (шапка документа)
+    waybill = models.OneToOneField(
+        Waybill,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="passenger_car_waybill",
+        help_text="Путевой лист, к которому относится работа легкового автомобиля",
+    )
+
+    # Легковой автомобиль, чья работа фиксируется в этом путевом
+    passenger_car = models.ForeignKey(
+        PassengerCar,
+        on_delete=models.PROTECT,
+        null=False,
+        related_name="waybills",
+        help_text="Легковой автомобиль",
+    )
+
+    # Больше полей здесь не нужно: год, месяц, начальные остатки
+    # можно посчитать на фронте:
+    #  - year, month: из waybill.from_date
+    #  - начальные остатки: по первой записи PassengerCarWaybillRecord
 
 class FireTruckWaybill(SoftDeleteModel):
     waybill = models.OneToOneField(Waybill, on_delete=models.CASCADE, null=False)
+    fire_truck = models.ForeignKey(
+        FireTruck,
+        on_delete=models.PROTECT,
+        null=False,
+        related_name="waybills",
+        help_text="Пожарный автомобиль",
+    )
 
 class FireTruckWaybillRecord(SoftDeleteModel):
-    date = models.DateField(null=False)
-    name = models.CharField(max_length=255, null=False)
-    
+    # Привязка к карточке пожарного автомобиля (месяц/машина)
+    fire_truck_waybill = models.ForeignKey(
+        FireTruckWaybill,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="records",
+        help_text="Эксплуатационная карточка, к которой относится запись",
+    )
+
+    # (1) Дата работы автомобиля
+    date = models.DateField(
+        null=False,
+        help_text="Дата работы пожарного автомобиля",
+    )
+
+    # (2) Наименование и место работы
+    place_of_work = models.CharField(
+        max_length=255,
+        null=False,
+        help_text="Наименование и место работы автомобиля",
+    )
+
+    # (4–5) Время выезда
+    departure_time = models.TimeField(
+        null=False,
+        help_text="Время выезда автомобиля",
+    )
+
+    # (6–7) Время возвращения
+    return_time = models.TimeField(
+        null=False,
+        help_text="Время возвращения автомобиля",
+    )
+
+    # (3) Наличие ГСМ перед выездом, л
+    fuel_before_departure = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        help_text="Количество топлива в баке перед выездом, л",
+    )
+
+    # (8) Показания спидометра перед выездом, км
+    odometer_before = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        help_text="Показание одометра перед выездом, км",
+    )
+
+    # Показания спидометра после возвращения, км
+    # (в файле нет отдельной колонки, но без этого не посчитать пробег)
+    odometer_after = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        help_text="Показание одометра после возвращения, км",
+    )
+
+    # ===== Время работы по видам, всё в минутах (колонки 11–18) =====
+
+    fire_time_with_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы на пожарах с насосом, мин",
+    )
+    fire_time_without_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы на пожарах без насоса, мин",
+    )
+
+    training_time_with_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы на учениях с насосом, мин",
+    )
+    training_time_without_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы на учениях без насоса, мин",
+    )
+
+    shift_change_time_with_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы при смене караула с насосом, мин",
+    )
+    shift_change_time_without_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Время работы при смене караула без насоса, мин",
+    )
+
+    other_time_with_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Прочие работы автомобиля с насосом, мин",
+    )
+    other_time_without_pump = models.PositiveIntegerField(
+        default=0,
+        help_text="Прочие работы автомобиля без насоса, мин",
+    )
+
+    # (22) Заправка за рейс, л
+    fuel_refueled = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        default=0,
+        help_text="Заправлено топлива за время этой записи, л",
+    )
+
+    class Meta:
+        ordering = ["date", "departure_time"]
+
+class PassengerCarWaybillRecord(SoftDeleteModel):
+    # Привязка к путевому листу легкового автомобиля (шапке)
+    passenger_car_waybill = models.ForeignKey(
+        PassengerCarWaybill,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="records",
+        help_text="Путевой лист легкового автомобиля, к которому относится запись",
+    )
+
+    # (1) Дата работы автомобиля
+    date = models.DateField(
+        null=False,
+        help_text="Дата работы легкового автомобиля",
+    )
+
+    # (2) Фамилия, инициалы водителя
+    driver = models.ForeignKey(User, on_delete=models.CASCADE, null=False, related_name='driver', help_text='водитель')
+
+    # (3) Наличие ГСМ перед выездом, л
+    fuel_before_departure = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=False,
+        help_text="Количество топлива в баке перед выездом, л",
+    )
+
+    # (8) Показания спидометра перед выездом, км
+    odometer_before = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Показание одометра перед выездом, км",
+    )
+
+    # Показания спидометра после возвращения, км
+    # (в таблице нет отдельной колонки, но без этого нельзя точно посчитать пробег)
+    odometer_after = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Показание одометра после возвращения, км",
+    )
+
+   # (10) Пройдено по ГОРОДУ, км
+    distance_city_km = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Пробег по городу за поездку, км",
+    )
+
+    # (11) Пройдено по ОБЛАСТИ, км
+    distance_area_km = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=False,
+        help_text="Пробег по области за поездку, км",
+    )
+
+    # (17) Заправка топлива, л
+    fuel_refueled = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        default=0,
+        help_text="Заправлено топлива за время этой записи, л",
+    )
+
+    class Meta:
+        ordering = ["date", "driver_name"]
+
+    def __str__(self):
+        return f"{self.date} — {self.driver_name}"
