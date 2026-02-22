@@ -1,4 +1,4 @@
-# app_name/views_auth.py
+# fuel/views_auth.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,6 +8,14 @@ from .auth import create_access_token
 
 
 class LoginView(APIView):
+    """
+    POST /api/auth/login/
+    {
+      "login": "...",
+      "password": "...",
+      "client": "web" | "mobile"
+    }
+    """
     authentication_classes = []
     permission_classes = []
 
@@ -30,7 +38,6 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # ВАЖНО: проверяем через check_password
         if not user.check_password(password):
             return Response(
                 {"detail": "Неверный логин или пароль"},

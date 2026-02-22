@@ -1,18 +1,15 @@
-# serializers.py
+# fuel/serializers.py
 from rest_framework import serializers
 from .models import (
-    Rank, Role, RoleSubstitution, DriverLicense, User,
-    RequiredRole, Waybill, Signature,
-    Car, PassengerCar, FireTruck,
-    PassengerCarWaybill, PassengerCarWaybillRecord,
-    FireTruckWaybill, FireTruckWaybillRecord,
+    Role, Permission, User,
+    PassengerCar, NormsPassengerCars, PassengerCarWaybill,
+    PassengerCarWaybillRecord, OdometerFuelPassengerCar,
+    FireTruck, NormsFireTruck, FireTruckWaybill,
+    FireTruckWaybillRecord, OdometerFuelFireTruck,
 )
 
-class RankSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Rank
-        fields = '__all__'
 
+# --- Роли и права ------------------------------------------------------------
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,24 +17,20 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class RoleSubstitutionSerializer(serializers.ModelSerializer):
+class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RoleSubstitution
+        model = Permission
         fields = '__all__'
 
 
-class DriverLicenseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DriverLicense
-        fields = '__all__'
-
+# --- Пользователь ------------------------------------------------------------
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = '__all__'
         extra_kwargs = {
-            'password': {'write_only': True},  # не отдаём хеш во фронт
+            'password': {'write_only': True},
         }
 
     def create(self, validated_data):
@@ -60,35 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-class RequiredRoleSerializer(serializers.ModelSerializer):
-    role_name = serializers.CharField(source='role.name', read_only=True)
-
-    class Meta:
-        model = RequiredRole
-        fields = ['role', 'role_name', 'order', 'id']
-        read_only_fields = ['id']
-
-class SignatureSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='required_role.role.name', read_only=True)
-    user_name = serializers.CharField(source='user.login', read_only=True)
-
-    class Meta:
-        model = Signature
-        fields = ['id', 'waybill', 'required_role', 'role',
-                  'user', 'user_name', 'signed_at']
-        read_only_fields = ['id', 'signed_at']
-
-
-class WaybillSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Waybill
-        fields = '__all__'
-
-class CarSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Car
-        fields = '__all__'
-
+# --- Легковой автомобиль -----------------------------------------------------
 
 class PassengerCarSerializer(serializers.ModelSerializer):
     class Meta:
@@ -96,14 +61,66 @@ class PassengerCarSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class NormsPassengerCarsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NormsPassengerCars
+        fields = '__all__'
+
+
+class OdometerFuelPassengerCarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OdometerFuelPassengerCar
+        fields = '__all__'
+
+
+class PassengerCarWaybillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PassengerCarWaybill
+        fields = '__all__'
+        read_only_fields = [
+            'upon_issuance',
+            'total_spent',
+            'total_received',
+            'required_by_norm',
+            'availability_upon_delivery',
+            'savings',
+            'overrun',
+        ]
+
+
+class PassengerCarWaybillRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PassengerCarWaybillRecord
+        fields = '__all__'
+        read_only_fields = [
+            'fuel_before_departure',
+            'odometer_before',
+            'odometer_after',
+            'distance_total_km',
+            'fuel_used_city',
+            'fuel_used_area',
+            'fuel_on_return',
+            'fuel_used_normal',
+        ]
+
+
+# --- Пожарный автомобиль -----------------------------------------------------
+
 class FireTruckSerializer(serializers.ModelSerializer):
     class Meta:
         model = FireTruck
         fields = '__all__'
 
-class PassengerCarWaybillSerializer(serializers.ModelSerializer):
+
+class NormsFireTruckSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PassengerCarWaybill
+        model = NormsFireTruck
+        fields = '__all__'
+
+
+class OdometerFuelFireTruckSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OdometerFuelFireTruck
         fields = '__all__'
 
 
@@ -111,29 +128,28 @@ class FireTruckWaybillSerializer(serializers.ModelSerializer):
     class Meta:
         model = FireTruckWaybill
         fields = '__all__'
-
-
-class PassengerCarWaybillRecordSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PassengerCarWaybillRecord
-        fields = '__all__'
-        # вычисляемые поля считаем на бэке, с фронта не пишем
         read_only_fields = [
-            'norm_city', 'norm_area',
-            'distance_total_km',
-            'fuel_used_city', 'fuel_used_area',
-            'fuel_used_total', 'fuel_on_return',
+            'upon_issuance',
+            'total_spent',
+            'total_received',
+            'required_by_norm',
+            'availability_upon_delivery',
+            'savings',
+            'overrun',
         ]
+
 
 class FireTruckWaybillRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = FireTruckWaybillRecord
         fields = '__all__'
         read_only_fields = [
-            'norm_km', 'norm_with_pump', 'norm_without_pump',
+            'fuel_before_departure',
+            'odometer_before',
             'distance_km',
+            'fuel_on_return',
             'fuel_used_by_distance',
-            'fuel_used_with_pump', 'fuel_used_without_pump',
-            'fuel_used_total', 'fuel_on_return',
+            'fuel_used_with_pump',
+            'fuel_used_without_pump',
+            'fuel_used_normal',
         ]
-

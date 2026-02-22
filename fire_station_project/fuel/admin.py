@@ -1,28 +1,35 @@
 from django.contrib import admin
 from .models import (
-    Rank, Role, RoleSubstitution,
-    DriverLicense, User,
-    RequiredRole, Waybill, Signature,
-    Car, PassengerCar, FireTruck,
-    PassengerCarWaybill, PassengerCarWaybillRecord,
-    FireTruckWaybill, FireTruckWaybillRecord,
+    Role,
+    User,
+    PassengerCar,
+    FireTruck,
+    PassengerCarWaybill,
+    PassengerCarWaybillRecord,
+    FireTruckWaybill,
+    FireTruckWaybillRecord,
+    OdometerFuelFireTruck,
+    OdometerFuelPassengerCar,
+    NormsFireTruck,
+    NormsPassengerCars,
+    Permission
 )
 
 
 # Самый простой вариант — просто зарегистрировать модели
 
-admin.site.register(Rank)
 admin.site.register(Role)
-admin.site.register(RoleSubstitution)
-admin.site.register(DriverLicense)
 admin.site.register(User)
-admin.site.register(RequiredRole)
-admin.site.register(Waybill)
-admin.site.register(Signature)
-admin.site.register(Car)
+admin.site.register(Permission)
+
 admin.site.register(PassengerCar)
-admin.site.register(FireTruck)
 admin.site.register(PassengerCarWaybill)
 admin.site.register(PassengerCarWaybillRecord)
+admin.site.register(OdometerFuelPassengerCar)
+admin.site.register(NormsPassengerCars)
+
+admin.site.register(FireTruck)
 admin.site.register(FireTruckWaybill)
 admin.site.register(FireTruckWaybillRecord)
+admin.site.register(OdometerFuelFireTruck)
+admin.site.register(NormsFireTruck)

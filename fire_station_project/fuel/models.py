@@ -1,11 +1,14 @@
-# models.py
 from django.db import models, transaction
-from django.utils import timezone
+from django.db.models import Sum
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.contrib.auth.hashers import make_password, check_password, identify_hasher
+from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
+from datetime import date
 
 
-# --- Soft delete ---
+# --- Мягкое удаление ---
 
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
@@ -51,60 +54,126 @@ class SoftDeleteModel(models.Model):
         return super().delete(using=using, keep_parents=keep_parents)
 
 
-# --- Основные справочники ---
+# --- Основные таблицы ---
 
-class Rank(SoftDeleteModel):
-    name = models.CharField(max_length=50, unique=True)
+# --- Общие таблицы ---
+class Role(SoftDeleteModel):
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        null=False,
+        help_text="название"
+    )
 
     def __str__(self):
         return self.name
 
-class Role(SoftDeleteModel):
-    name = models.CharField(max_length=50, unique=True)
+class Permission(SoftDeleteModel):
+    role = models.OneToOneField(
+        Role,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="role"
+    )
+
     can_use_mobile_booking = models.BooleanField(default=False)
 
-    def __str__(self):
-        return self.name
+    can_create_users = models.BooleanField(default=False)
+    can_delete_users = models.BooleanField(default=False)
+    can_update_users = models.BooleanField(default=False)
+    view_users = models.BooleanField(default=False)
 
-class RoleSubstitution(SoftDeleteModel):
-    """
-    substitute_role может подписывать вместо main_role.
-    """
-    main_role = models.ForeignKey(
-        Role, on_delete=models.CASCADE,
-        related_name='substituted_by',
-    )
-    substitute_role = models.ForeignKey(
-        Role, on_delete=models.CASCADE,
-        related_name='can_substitute_for',
-    )
+    can_create_fire_trucks = models.BooleanField(default=False)
+    can_delete_fire_trucks = models.BooleanField(default=False)
+    can_update_fire_trucks = models.BooleanField(default=False)
+    view_fire_trucks = models.BooleanField(default=False)
 
-    class Meta:
-        unique_together = ('main_role', 'substitute_role')
+    can_create_fire_truck_waybils = models.BooleanField(default=False)
+    can_delete_fire_truck_waybils = models.BooleanField(default=False)
+    can_update_fire_truck_waybils = models.BooleanField(default=False)
+    can_download_fire_truck_waybills = models.BooleanField(default=False)
+    view_fire_truck_waybils = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"{self.substitute_role} за {self.main_role}"
+    can_create_fire_truck_waybils_record = models.BooleanField(default=False)
+    can_delete_fire_truck_waybils_record = models.BooleanField(default=False)
+    can_update_fire_truck_waybils_record = models.BooleanField(default=False)
 
-class DriverLicense(SoftDeleteModel):
-    number = models.CharField(max_length=10, unique=True)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    can_create_fire_truck_norms = models.BooleanField(default=False)
+    can_delete_fire_truck_norms = models.BooleanField(default=False)
+    can_update_fire_truck_norms = models.BooleanField(default=False)
+    view_fire_truck_norms = models.BooleanField(default=False)
 
-    def __str__(self):
-        return self.number
+    can_download_fire_truck_reports = models.BooleanField(default=False)
+    view_fire_truck_reports = models.BooleanField(default=False)
+
+    can_create_passenger_cars = models.BooleanField(default=False)
+    can_delete_passenger_cars = models.BooleanField(default=False)
+    can_update_passenger_cars = models.BooleanField(default=False)
+    view_passenger_cars = models.BooleanField(default=False)
+
+    can_create_passenger_cars_waybills = models.BooleanField(default=False)
+    can_delete_passenger_cars_waybills = models.BooleanField(default=False)
+    can_update_passenger_cars_waybills = models.BooleanField(default=False)
+    can_download_passenger_cars_waybills = models.BooleanField(default=False)
+    view_passenger_cars_waybills = models.BooleanField(default=False)
+
+    can_create_passenger_cars_waybils_record = models.BooleanField(default=False)
+    can_delete_passenger_cars_waybils_record = models.BooleanField(default=False)
+    can_update_passenger_cars_waybils_record = models.BooleanField(default=False)
+
+    can_create_passenger_cars_norms = models.BooleanField(default=False)
+    can_delete_passenger_cars_norms = models.BooleanField(default=False)
+    can_update_passenger_cars_norms = models.BooleanField(default=False)
+    view_passenger_cars_norms = models.BooleanField(default=False)
+
+    can_download_passenger_cars_reports = models.BooleanField(default=False)
+    view_passenger_cars_reports = models.BooleanField(default=False)
 
 class User(SoftDeleteModel):
-    name = models.CharField(max_length=40, null=False)
-    surname = models.CharField(max_length=40, null=False)
-    last_name = models.CharField(max_length=40, null=False)
+    name = models.CharField(
+        max_length=40,
+        null=False
+    )
 
-    login = models.CharField(max_length=15, unique=True, null=False)
-    password = models.CharField(max_length=300, null=False)
-    phone = models.CharField(max_length=12, unique=True, null=False)
+    surname = models.CharField(
+        max_length=40,
+        null=False
+    )
+    
+    last_name = models.CharField(
+        max_length=40,
+        null=False
+    )
 
-    rank = models.ForeignKey(Rank, on_delete=models.CASCADE, null=False, related_name='users')
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, null=False, related_name='users')
-    driver_license = models.OneToOneField(DriverLicense, on_delete=models.CASCADE, related_name='user')
+    login = models.CharField(
+        max_length=15,
+        unique=True,
+        null=False
+    )
+    
+    password = models.CharField(
+        max_length=300,
+        null=False
+    )
+
+    phone = models.CharField(
+        max_length=12,
+        unique=True,
+        null=False
+    )
+
+    driver_license = models.CharField(
+        max_length=10,
+        unique=True,
+        null=True
+    )
+
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name='users'
+    )
 
     def __str__(self):
         return f"{self.surname} {self.name} {self.last_name} ({self.login})"
@@ -112,710 +181,1084 @@ class User(SoftDeleteModel):
     # ---------- работа с паролем ----------
 
     def set_password(self, raw_password: str) -> None:
-        """
-        Установить пароль пользователю (с хешированием).
-        """
         self.password = make_password(raw_password)
 
     def check_password(self, raw_password: str) -> bool:
-        """
-        Проверить пароль.
-        """
         return check_password(raw_password, self.password)
 
     def save(self, *args, **kwargs):
-        """
-        Автоматически захешировать пароль, если он ещё в открытом виде.
-        Это на случай, если кто-то присвоил self.password вручную.
-        """
         if self.password:
             try:
-                # если пароль уже в виде хеша, identify_hasher его "узнает"
                 identify_hasher(self.password)
             except ValueError:
-                # не смогли распознать хеш — считаем, что это raw_password
                 self.password = make_password(self.password)
 
         super().save(*args, **kwargs)
-    
-class RequiredRole(SoftDeleteModel):
-    """
-    Роль, подпись которой ОБЯЗАТЕЛЬНА для любого путевого листа.
-    """
-    role = models.OneToOneField(
-        Role,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name='required_role_meta',
-    )
-    order = models.PositiveIntegerField(default=0)
 
-    class Meta:
-        ordering = ['order']
-
-    def __str__(self):
-        return f"Обязательная роль: {self.role.name}"
-
-class Waybill(SoftDeleteModel):
-    date = models.DateField()
-    from_date = models.DateField()
-    for_date = models.DateField()
-    number = models.PositiveBigIntegerField(null=False)
-
-    def __str__(self):
-        return f"Путевой лист от {self.date} - {self.number}"
-
-class Signature(SoftDeleteModel):
-    """
-    Фактическая подпись под путевым листом.
-    """
-
-    waybill = models.ForeignKey(
-        Waybill,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name='signatures',
-        help_text="Путевой лист, который подписывается",
-    )
-
-    required_role = models.ForeignKey(
-        RequiredRole,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name='signatures',
-        help_text="Какую обязательную роль закрывает эта подпись",
-    )
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name='signatures',
-        help_text="Пользователь, который поставил подпись",
-    )
-
-    signed_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="Дата и время, когда подпись была поставлена",
-    )
-
-    class Meta:
-        # один слот обязательной роли по одному путевому листу — одна строка
-        unique_together = ('waybill', 'required_role')
-
-    def __str__(self):
-        return f"{self.waybill_id}: {self.user} за {self.required_role.role.name}"
-
-    # -------- ВАЛИДАЦИЯ ЧЕРЕЗ services.can_user_sign_required_role --------
-
-    def clean(self):
-        """
-        Проверка, что self.user имеет право подписать слот self.required_role.
-        Логика вынесена в services.can_user_sign_required_role.
-        """
-        super().clean()
-
-        # если объект ещё не до конца заполнен (например, в админке) — пропускаем
-        if not self.user_id or not self.required_role_id:
-            return
-
-        from .services import can_user_sign_required_role  # локальный импорт, без циклов
-
-        if not can_user_sign_required_role(self.user, self.required_role):
-            raise ValidationError("У этого пользователя нет права подписать этот слот")
-
-    def save(self, *args, **kwargs):
-        # full_clean вызывает clean() + проверяет типы полей
-        self.full_clean()
-        return super().save(*args, **kwargs)
-    
-class Car(SoftDeleteModel):
-    number = models.CharField(max_length=9, unique=True)
-    brand = models.CharField(max_length=30, help_text='марка машины')
-    model = models.CharField(max_length=60)
-
-    def __str__(self):
-        return f"{self.number} ({self.brand} {self.model})"
-    
-class PassengerCar(SoftDeleteModel):
-    odometer = models.DecimalField(max_digits=7, decimal_places=2,
-                                   help_text="Текущее показание одометра, км")
-    fuel = models.DecimalField(max_digits=8, decimal_places=3,
-                               help_text="Показания топлива перед выездом, л")
-
-    winter_area = models.DecimalField(max_digits=5, decimal_places=3,
-                                      help_text="Норма зимой по области, л/км")
-    winter_city = models.DecimalField(max_digits=5, decimal_places=3,
-                                      help_text="Норма зимой по городу, л/км")
-    summer_area = models.DecimalField(max_digits=5, decimal_places=3,
-                                      help_text="Норма летом по области, л/км")
-    summer_city = models.DecimalField(max_digits=5, decimal_places=3,
-                                      help_text="Норма летом по городу, л/км")
-
-    car = models.OneToOneField(
-        Car, on_delete=models.CASCADE,
-        related_name="passenger_car",
-    )
-
-    def __str__(self):
-        return f"{self.car.number} (легковой)"
-    
-class FireTruck(SoftDeleteModel):
-    odometer = models.DecimalField(max_digits=7, decimal_places=2,
-                                   help_text="Текущее показание одометра, км")
-    type = models.CharField(max_length=60, help_text="Тип пожарного автомобиля")
-    fuel = models.DecimalField(max_digits=8, decimal_places=3,
-                               help_text="Показания топлива перед последним выездом, л")
-
-    winter_km = models.DecimalField(max_digits=5, decimal_places=3,
-                                    help_text="Норма зимой по пробегу, л/км")
-    winter_without_pump = models.DecimalField(max_digits=5, decimal_places=3,
-                                              help_text="Норма зимой без насоса, л/ед.времени")
-    winter_with_pump = models.DecimalField(max_digits=5, decimal_places=3,
-                                           help_text="Норма зимой с насосом, л/ед.времени")
-
-    summer_km = models.DecimalField(max_digits=5, decimal_places=3,
-                                    help_text="Норма летом по пробегу, л/км")
-    summer_without_pump = models.DecimalField(max_digits=5, decimal_places=3,
-                                              help_text="Норма летом без насоса, л/ед.времени")
-    summer_with_pump = models.DecimalField(max_digits=5, decimal_places=3,
-                                           help_text="Норма летом с насосом, л/ед.времени")
-
-    car = models.OneToOneField(
-        Car, on_delete=models.CASCADE,
-        related_name="fire_truck",
-    )
-
-    def __str__(self):
-        return f"{self.car.number} ({self.type})"
-    
 class Season(models.TextChoices):
-    WINTER = 'winter', 'Зимняя норма'
-    SUMMER = 'summer', 'Летняя норма'
+    WINTER = 'winter', 'Зима'
+    SUMMER = 'summer', 'Лето'
+
+class FuelType(models.TextChoices):
+    PETROL = 'petrol', 'Бензин'
+    DIESEL = 'diesel', 'Дизельное топливо'
+
+
+# --- Таблицы легкового автомобиля ---
+class PassengerCar(SoftDeleteModel):
+    number = models.CharField(
+        max_length=9,
+        null=False,
+        unique=True,
+        help_text="гос. номер"
+    )
+
+    brand = models.CharField(
+        null=False,
+        help_text="марка"
+    )
+
+    model = models.CharField(
+        null=False,
+        help_text="модель"
+    )
+
+    def __str__(self):
+        return f"легковой автомобиль с гос. номером {self.number} "  
+
+class NormsPassengerCars(SoftDeleteModel):
+    car = models.ForeignKey(
+        PassengerCar,
+        on_delete=models.CASCADE,
+        related_name="norms",
+    )
+
+    season = models.CharField(
+        max_length=10,
+        choices=Season.choices,
+        null=False,
+        help_text="сезон",
+    )
+
+    city_norm = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        null=False,
+        help_text="норма на 1 км по городу, л/км",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    area_norm = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        null=False,
+        help_text="норма на 1 км по области, л/км",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    date = models.DateField(
+        default=date.today,
+        null=False,
+        help_text="дата утверждения нормы",
+    )
+
+    def __str__(self):
+        return f"Норма {self.car.number} {self.season} от {self.date}"
 
 class PassengerCarWaybill(SoftDeleteModel):
-    waybill = models.OneToOneField(
-        Waybill,
-        on_delete=models.CASCADE,
-        related_name="passenger_car_waybill",
+    number = models.CharField(
+        max_length=6,
+        null=False,
+        help_text="номер путевого листа",
+        unique=True,
     )
-    passenger_car = models.ForeignKey(
+
+    car = models.ForeignKey(
         PassengerCar,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
+        null=False,
         related_name="waybills",
     )
 
+    driver = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="passenger_car_driver",
+        null=False,
+        help_text="водитель"
+    )
+
+    date = models.DateField(
+        default=date.today,
+        null=False,
+        help_text="дата путевого листа",
+    )
+
+    norm_season = models.CharField(
+        max_length=10,
+        choices=Season.choices,
+        null=False,
+        help_text="сезон нормы"
+    )
+
+    fuel_type = models.CharField(
+        max_length=10,
+        choices=FuelType.choices,
+        null=False,
+        help_text="тип топлива"
+    )
+
+    # --- агрегатные поля (заполняются автоматически) ---
+
+    upon_issuance = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="наличие ГСМ при выдаче, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    total_spent = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="всего израсходовано, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    total_received = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="всего получено (заправки), л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    required_by_norm = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="положено по норме, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    availability_upon_delivery = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="наличие при сдаче, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    savings = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="экономия, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    overrun = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="перерасход, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    def __str__(self):
+        return f"Путевой лист {self.car.number} от {self.date}"
+
+    # ---- пересчёт агрегатов ----
+
+    def recalc_totals(self, save=True):
+        """
+        Пересчитать агрегатные поля на основе записей и начального состояния.
+        """
+        # начальное топливо (берём последнюю запись по машине на дату путевого)
+        start_state = (
+            OdometerFuelPassengerCar.objects
+            .filter(car=self.car, date__lte=self.date)
+            .order_by('-date', '-id')
+            .first()
+        )
+        self.upon_issuance = start_state.fuel if start_state else Decimal('0.000')
+
+        qs = self.records.all()
+
+        agg = qs.aggregate(
+            total_spent=Sum('fuel_used'),
+            total_received=Sum('fuel_refueled'),
+            required_by_norm=Sum('fuel_used_normal'),
+        )
+
+        self.total_spent = agg['total_spent'] or Decimal('0.000')
+        self.total_received = agg['total_received'] or Decimal('0.000')
+        self.required_by_norm = agg['required_by_norm'] or Decimal('0.000')
+
+        last_record = qs.order_by('-id').first()
+        self.availability_upon_delivery = (
+            last_record.fuel_on_return if last_record else self.upon_issuance
+        )
+
+        # экономия / перерасход
+        diff = self.required_by_norm - self.total_spent
+        if diff >= 0:
+            self.savings = diff
+            self.overrun = Decimal('0.000')
+        else:
+            self.savings = Decimal('0.000')
+            self.overrun = -diff
+
+        if save:
+            self.save(
+                update_fields=[
+                    'upon_issuance',
+                    'total_spent',
+                    'total_received',
+                    'required_by_norm',
+                    'availability_upon_delivery',
+                    'savings',
+                    'overrun',
+                ]
+            )
+
 class PassengerCarWaybillRecord(SoftDeleteModel):
-    # Шапка путевого листа
     passenger_car_waybill = models.ForeignKey(
         PassengerCarWaybill,
         on_delete=models.CASCADE,
         null=False,
         related_name="records",
-        help_text="Путевой лист легкового автомобиля, к которому относится запись",
+        help_text="Путевой лист легкового автомобиля",
     )
 
-    # Дата и водитель
-    date = models.DateField(
+    target = models.CharField(
+        max_length=255,
         null=False,
-        help_text="Дата работы легкового автомобиля",
-    )
-    driver = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        null=False,
-        related_name='driving_records',
-        help_text='Водитель',
+        help_text="цель выезда"
     )
 
-    # ------ ПОЛЯ, КОТОРЫЕ ВВОДИТ ПОЛЬЗОВАТЕЛЬ ------
-
-    # Показание одометра ПОСЛЕ возвращения, км
-    odometer_after = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
+    departure_time = models.TimeField(
         null=False,
-        help_text="Показание одометра после возвращения, км",
+        help_text="время убытия"
     )
 
-    # Пробег по городу и по области (водитель/механик вводят вручную)
-    distance_city_km = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
+    arrival_time = models.TimeField(
         null=False,
-        help_text="Пробег по городу за поездку, км",
-    )
-    distance_area_km = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=False,
-        help_text="Пробег по области за поездку, км",
+        help_text="время прибытия"
     )
 
-    # Заправка топлива за поездку, л
+    distance_city_km = models.PositiveIntegerField(
+        null=False,
+        help_text="пройдено км по городу",
+        validators=[MaxValueValidator(999999)]
+    )
+
+    distance_area_km = models.PositiveIntegerField(
+        null=False,
+        help_text="пройдено км по области",
+        validators=[MaxValueValidator(999999)]
+    )
+
     fuel_refueled = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
         default=0,
-        help_text="Заправлено топлива за время этой записи, л",
+        help_text="заправка, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # Сезон (по нему выбираем нормы)
-    season = models.CharField(
-        max_length=10,
-        choices=Season.choices,
-        default=Season.SUMMER,
-        help_text="Какую норму применить для расчёта (зимняя/летняя)",
+    fuel_used = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        help_text="израсходовано топлива, л (фактически)",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # ------ ПОЛЯ, КОТОРЫЕ ЗАПОЛНЯЮТСЯ АВТОМАТИЧЕСКИ ------
+    # авто-поля (как раньше)
+    odometer_after = models.PositiveIntegerField(
+        null=False,
+        editable=False,
+        help_text="одометр после возвращения, км",
+        validators=[MaxValueValidator(999999)]
+    )
 
-    # Наличие ГСМ перед выездом, л
     fuel_before_departure = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Количество топлива в баке перед выездом, л (автоматически)",
+        help_text="топливо перед выездом, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # Одометр ПЕРЕД выездом, км
-    odometer_before = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=True,
-        blank=True,
+    odometer_before = models.PositiveIntegerField(
+        null=False,
         editable=False,
-        help_text="Показание одометра перед выездом, км (автоматически)",
+        help_text="одометр перед выездом, км",
+        validators=[MaxValueValidator(999999)]
     )
 
-    # Слепок норм, использованных при расчёте
-    norm_city = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        null=True,
-        blank=True,
+    distance_total_km = models.PositiveIntegerField(
+        null=False,
         editable=False,
-        help_text="Норма по городу, л/км, применённая для этой записи",
-    )
-    norm_area = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Норма по области, л/км, применённая для этой записи",
+        help_text="всего пройдено км",
+        validators=[MaxValueValidator(999999)]
     )
 
-    # Вычисляемые итоговые поля
-    distance_total_km = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Общий пробег за поездку, км",
-    )
     fuel_used_city = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Израсходовано топлива по городу, л",
+        help_text="израсходовано по городу, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
+
     fuel_used_area = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Израсходовано топлива по области, л",
+        help_text="израсходовано по области, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
-    fuel_used_total = models.DecimalField(
-        max_digits=8,
-        decimal_places=3,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Всего израсходовано топлива, л",
-    )
+
     fuel_on_return = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Остаток топлива в баке при возвращении, л",
+        help_text="остаток топлива при возвращении, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    fuel_used_normal = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        help_text="израсходовано по норме, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
     class Meta:
-        ordering = ["date", "driver_id"]
+        ordering = ["id"]
 
-    def __str__(self):
-        return f"{self.date} — {self.driver}"
-
-    # --------- СЛУЖЕБНЫЕ МЕТОДЫ ДЛЯ РАСЧЁТА ---------
+    # ------------ внутренняя логика ------------
 
     def _fill_start_values(self):
         """
-        Заполнить odometer_before и fuel_before_departure,
-        если они ещё не заданы (новая запись).
-        Берём их:
-        - из предыдущей записи этого же путевого листа;
-        - или из текущего состояния PassengerCar.
+        odometer_before / fuel_before_departure берём из ПОСЛЕДНЕЙ записи
+        OdometerFuelPassengerCar по этой машине.
         """
-        if self.odometer_before is not None and self.fuel_before_departure is not None:
-            return
+        wb = self.passenger_car_waybill
+        car = wb.car
 
-        car = self.passenger_car_waybill.passenger_car
-
-        # предыдущая запись данного путевого
-        last = (
-            PassengerCarWaybillRecord.objects
-            .filter(passenger_car_waybill=self.passenger_car_waybill)
-            .exclude(pk=self.pk)
+        last_state = (
+            OdometerFuelPassengerCar.objects
+            .filter(car=car)
             .order_by('-date', '-id')
             .first()
         )
+        if not last_state:
+            raise ValidationError(
+                f"Не найдены последние показания одометра/топлива для {car.number}. "
+                "Сначала создайте запись в OdometerFuelPassengerCar."
+            )
 
-        if last:
-            self.odometer_before = last.odometer_after
-            self.fuel_before_departure = last.fuel_on_return
-        else:
-            # первая запись для этого путевого — берём из машины
-            self.odometer_before = car.odometer
-            self.fuel_before_departure = car.fuel
+        self.odometer_before = last_state.odometer
+        self.fuel_before_departure = last_state.fuel
 
-    def _recalc(self):
+    def _apply_norms(self):
         """
-        Пересчитать нормы и расход по пробегу.
+        Тот же расчёт, который у тебя уже был:
+        - distance_total_km = distance_city_km + distance_area_km
+        - odometer_after = odometer_before + distance_total_km
+        - fuel_used_city/area по нормам из NormsPassengerCars (по сезону и дате)
         """
-        car = self.passenger_car_waybill.passenger_car
+        wb = self.passenger_car_waybill
+        car = wb.car
 
-        # Выбор норм по сезону
-        if self.season == Season.WINTER:
-            self.norm_city = car.winter_city
-            self.norm_area = car.winter_area
-        else:
-            self.norm_city = car.summer_city
-            self.norm_area = car.summer_area
+        from .models import NormsPassengerCars  # локальный импорт, если нужно
 
-        # Общий пробег
-        self.distance_total_km = (self.distance_city_km or 0) + (self.distance_area_km or 0)
+        norm = (
+            NormsPassengerCars.objects
+            .filter(
+                car=car,
+                season=wb.norm_season,
+                date__lte=wb.date,
+            )
+            .order_by('-date', '-id')
+            .first()
+        )
+        if not norm:
+            raise ValidationError(
+                f"Не найдена норма для {car.number}, сезон={wb.norm_season}"
+            )
 
-        # Расход по город/область
-        self.fuel_used_city = (self.distance_city_km or 0) * (self.norm_city or 0)
-        self.fuel_used_area = (self.distance_area_km or 0) * (self.norm_area or 0)
-        self.fuel_used_total = (self.fuel_used_city or 0) + (self.fuel_used_area or 0)
+        self.distance_total_km = self.distance_city_km + self.distance_area_km
+        self.odometer_after = self.odometer_before + self.distance_total_km
 
-        # Остаток топлива при возвращении
+        self.fuel_used_city = Decimal(self.distance_city_km) * norm.city_norm
+        self.fuel_used_area = Decimal(self.distance_area_km) * norm.area_norm
+        self.fuel_used_normal = (self.fuel_used_city or 0) + (self.fuel_used_area or 0)
+
+    def _calc_fuel_on_return(self):
+        """
+        Остаток топлива = до выезда - фактический расход + заправка.
+        """
         self.fuel_on_return = (
-            (self.fuel_before_departure or 0) +
-            (self.fuel_refueled or 0) -
-            (self.fuel_used_total or 0)
+            (self.fuel_before_departure or Decimal('0.000'))
+            - (self.fuel_used or Decimal('0.000'))
+            + (self.fuel_refueled or Decimal('0.000'))
         )
 
-    def _update_car_state(self):
-        """
-        Обновить одометр и остаток топлива у PassengerCar
-        по результатам этой записи.
-        """
-        car = self.passenger_car_waybill.passenger_car
-
-        # Одометр: всегда берём максимальное значение
-        if self.odometer_after and self.odometer_after > (car.odometer or 0):
-            car.odometer = self.odometer_after
-
-        # Остаток топлива = fuel_on_return последней записи по факту
-        if self.fuel_on_return is not None:
-            car.fuel = self.fuel_on_return
-
-        car.save(update_fields=['odometer', 'fuel'])
-
     def save(self, *args, **kwargs):
+        from .models import OdometerFuelPassengerCar  # чтобы не было циклов
         with transaction.atomic():
             self._fill_start_values()
-            self._recalc()
+            self._apply_norms()
+            self._calc_fuel_on_return()
             super().save(*args, **kwargs)
-            self._update_car_state()
-    
-class FireTruckWaybill(SoftDeleteModel):
-    waybill = models.OneToOneField(
-        Waybill, on_delete=models.CASCADE,
-        related_name='fire_truck_waybill',
+
+            # создаём новый снимок в OdometerFuelPassengerCar
+            OdometerFuelPassengerCar.objects.create(
+                car=self.passenger_car_waybill.car,
+                odometer=self.odometer_after,
+                fuel=self.fuel_on_return,
+                date=self.passenger_car_waybill.date,  # или date.today()
+                waybill=self.passenger_car_waybill,
+            )
+
+            # пересчёт агрегатов по путевому
+            self.passenger_car_waybill.recalc_totals()
+
+class OdometerFuelPassengerCar(SoftDeleteModel):
+    car = models.ForeignKey(
+        PassengerCar,
+        on_delete=models.CASCADE,
+        related_name="odometer_fuel_records",
+        null=False,
+        blank=True,   # можно не заполнять в форме, если есть waybill
+        help_text="автомобиль",
     )
-    fire_truck = models.ForeignKey(
+
+    odometer = models.PositiveIntegerField(
+        null=False,
+        blank=True,   # можно не заполнять в форме, если есть waybill
+        help_text="показания одометра, км",
+        validators=[MaxValueValidator(999999)]
+    )
+
+    fuel = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        blank=True,   # можно не заполнять в форме, если есть waybill
+        help_text="остаток топлива, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    date = models.DateField(
+        default=date.today,
+        null=False,
+        help_text="дата состояния",
+    )
+
+    waybill = models.ForeignKey(
+        PassengerCarWaybill,
+        on_delete=models.CASCADE,
+        related_name="odometer_fuel_states",
+        null=True,
+        blank=True,   # можно без путевого, тогда всё вручную
+        help_text="путевой лист (если указан, данные подтянутся автоматически)",
+    )
+
+    def clean(self):
+        """
+        Логика:
+        - если waybill указан:
+            - car берём из waybill.car, если не указан;
+            - если odometer/fuel не заданы — пытаемся взять из последней записи waybill'a;
+            - если у waybill'a нет записей и одометр/топливо не указаны вручную — ошибка.
+        - если waybill НЕ указан:
+            - car, odometer, fuel ОБЯЗАТЕЛЬНЫ.
+        """
+        super().clean()
+
+        # если указан путевой лист
+        if self.waybill_id:
+            # подтягиваем машину из путевого, если не указана
+            if self.car_id is None:
+                self.car = self.waybill.car
+
+            # ищем последнюю запись по этому путевому
+            last_rec = (
+                self.waybill.records
+                .order_by('-id')
+                .first()
+            )
+
+            # если нет записей и пользователь не указал значения — ошибка
+            if last_rec is None and (self.odometer is None or self.fuel is None):
+                raise ValidationError(
+                    "У путевого листа нет записей. "
+                    "Укажите одометр и остаток топлива вручную, либо создайте записи."
+                )
+
+            # если одометр не указан — берём из последней записи
+            if self.odometer is None and last_rec is not None:
+                self.odometer = last_rec.odometer_after
+
+            # если топливо не указано — берём из последней записи
+            if self.fuel is None and last_rec is not None:
+                self.fuel = last_rec.fuel_on_return
+
+            # если дату не указали — можно взять из путевого или последней записи
+            if self.date is None:
+                self.date = last_rec.arrival_time.date() if last_rec else self.waybill.date
+
+        else:
+            # waybill НЕ указан → всё вручную
+            errors = {}
+            if self.car_id is None:
+                errors['car'] = "Обязательно, если не указан путевой лист"
+            if self.odometer is None:
+                errors['odometer'] = "Обязательно, если не указан путевой лист"
+            if self.fuel is None:
+                errors['fuel'] = "Обязательно, если не указан путевой лист"
+
+            if errors:
+                raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # гарантируем, что перед сохранением срабатывает clean()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.car.number} {self.date}: {self.odometer} км, {self.fuel} л"    
+    
+
+
+# --- Таблицы пожарного автомобиля ---
+class FireTruck(SoftDeleteModel):
+    number = models.CharField(
+        max_length=9,
+        null=False,
+        unique=True,
+        help_text="гос. номер"
+    )
+
+    brand = models.CharField(
+        max_length=60,
+        null=False,
+        help_text="марка"
+    )
+
+    model = models.CharField(
+        max_length=60,
+        null=False,
+        help_text="модель"
+    )
+
+    type = models.CharField(
+        max_length=60,
+        null=False,
+        help_text="тип"
+    )
+
+    def __str__(self):
+        return f"Пожарный автомобиль с гос. номером {self.number}"
+    
+class NormsFireTruck(SoftDeleteModel):
+    car = models.ForeignKey(
         FireTruck,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
+        related_name="norms",
+    )
+
+    season = models.CharField(
+        max_length=10,
+        choices=Season.choices,
+        null=False,
+        help_text="сезон"
+    )
+
+    with_pump_norm = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        help_text="норма с насосом, л/мин (или др.ед.)",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    without_pump_norm = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        help_text="норма без насоса, л/мин (или др.ед.)",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    km_norm = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        help_text="норма по пробегу, л/км",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    date = models.DateField(
+        default=date.today,
+        null=False,
+        help_text="дата утверждения нормы"
+    )
+
+    def __str__(self):
+        return f"Норма {self.car.number} {self.season} от {self.date}"
+
+class FireTruckWaybill(SoftDeleteModel):
+    number = models.CharField(
+        max_length=6,
+        null=False,
+        help_text="номер путевого листа",
+        unique=True,
+    )
+
+    car = models.ForeignKey(
+        FireTruck,
+        null=False,
+        on_delete=models.CASCADE,
         related_name="waybills",
     )
 
+    driver = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="fire_truck_driver",
+        null=False,
+        help_text="водитель"
+    )
+
+    date = models.DateField(
+        default=date.today,
+        null=False,
+        help_text="дата путевого листа",
+    )
+
+    norm_season = models.CharField(
+        max_length=10,
+        choices=Season.choices,
+        null=False,
+        help_text="сезон нормы"
+    )
+
+    fuel_type = models.CharField(
+        max_length=10,
+        choices=FuelType.choices,
+        null=False,
+        help_text="тип топлива"
+    )
+
+    # агрегаты (как у легковой)
+
+    upon_issuance = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="наличие ГСМ при выдаче, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    total_spent = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="всего израсходовано, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    total_received = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="всего получено (заправки), л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    required_by_norm = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="положено по норме, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    availability_upon_delivery = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="наличие при сдаче, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    savings = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="экономия, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    overrun = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        default=Decimal('0.000'),
+        help_text="перерасход, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
+    def __str__(self):
+        return f"Путевой лист ПА {self.car.number} от {self.date}"
+
+    def recalc_totals(self, save=True):
+        start_state = (
+            OdometerFuelFireTruck.objects
+            .filter(car=self.car, date__lte=self.date)
+            .order_by('-date', '-id')
+            .first()
+        )
+        self.upon_issuance = start_state.fuel if start_state else Decimal('0.000')
+
+        qs = self.records.all()
+        agg = qs.aggregate(
+            total_spent=Sum('fuel_used'),
+            total_received=Sum('fuel_refueled'),
+            required_by_norm=Sum('fuel_used_normal'),
+        )
+
+        self.total_spent = agg['total_spent'] or Decimal('0.000')
+        self.total_received = agg['total_received'] or Decimal('0.000')
+        self.required_by_norm = agg['required_by_norm'] or Decimal('0.000')
+
+        last_record = qs.order_by('-id').first()
+        self.availability_upon_delivery = (
+            last_record.fuel_on_return if last_record else self.upon_issuance
+        )
+
+        diff = self.required_by_norm - self.total_spent
+        if diff >= 0:
+            self.savings = diff
+            self.overrun = Decimal('0.000')
+        else:
+            self.savings = Decimal('0.000')
+            self.overrun = -diff
+
+        if save:
+            self.save(update_fields=[
+                'upon_issuance', 'total_spent', 'total_received',
+                'required_by_norm', 'availability_upon_delivery',
+                'savings', 'overrun'
+            ])
+    
 class FireTruckWaybillRecord(SoftDeleteModel):
     fire_truck_waybill = models.ForeignKey(
         FireTruckWaybill,
         on_delete=models.CASCADE,
         null=False,
         related_name="records",
-        help_text="Эксплуатационная карточка, к которой относится запись",
+        help_text="Эксплуатационная карточка",
     )
 
-    # Базовая информация
-    date = models.DateField(
-        null=False,
-        help_text="Дата работы пожарного автомобиля",
-    )
-    place_of_work = models.CharField(
+    target = models.CharField(
         max_length=255,
         null=False,
-        help_text="Наименование и место работы автомобиля",
+        help_text="цель выезда"
     )
+
     departure_time = models.TimeField(
         null=False,
-        help_text="Время выезда автомобиля",
+        help_text="время убытия"
     )
-    return_time = models.TimeField(
+
+    arrival_time = models.TimeField(
         null=False,
-        help_text="Время возвращения автомобиля",
+        help_text="время прибытия"
     )
 
-    # -------- ПОЛЯ, КОТОРЫЕ ВВОДИТ ПОЛЬЗОВАТЕЛЬ --------
-
-    # Показание одометра ПОСЛЕ возвращения, км
-    odometer_after = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
+    odometer_after = models.PositiveIntegerField(
         null=False,
-        help_text="Показание одометра после возвращения, км",
+        help_text="одометр после возвращения, км",
+        validators=[MaxValueValidator(999999)]
     )
 
-    # Заправка за рейс, л
+    time_with_pump = models.PositiveIntegerField(
+        null=False,
+        help_text="время работы с насосом, мин",
+        validators=[MaxValueValidator(999999)]
+    )
+
+    time_without_pump = models.PositiveIntegerField(
+        null=False,
+        help_text="время работы без насоса, мин",
+        validators=[MaxValueValidator(999999)]
+    )
+
     fuel_refueled = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
         default=0,
-        help_text="Заправлено топлива за время этой записи, л",
+        help_text="заправка, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # Время работы, мин (всё вводит пользователь)
-    fire_time_with_pump = models.PositiveIntegerField(default=0)
-    fire_time_without_pump = models.PositiveIntegerField(default=0)
-    training_time_with_pump = models.PositiveIntegerField(default=0)
-    training_time_without_pump = models.PositiveIntegerField(default=0)
-    shift_change_time_with_pump = models.PositiveIntegerField(default=0)
-    shift_change_time_without_pump = models.PositiveIntegerField(default=0)
-    other_time_with_pump = models.PositiveIntegerField(default=0)
-    other_time_without_pump = models.PositiveIntegerField(default=0)
-
-    # Сезон (по нему выбираем нормы из FireTruck)
-    season = models.CharField(
-        max_length=10,
-        choices=Season.choices,
-        default=Season.SUMMER,
-        help_text="Какую норму применить (зимняя/летняя)",
+    fuel_used = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        help_text="фактически израсходовано, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # -------- ПОЛЯ, ЗАПОЛНЯЕМЫЕ АВТОМАТИЧЕСКИ --------
-
-    # Топливо и одометр ПЕРЕД выездом
+    # автоматические поля
     fuel_before_departure = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Топливо перед выездом, л (автоматически)",
-    )
-    odometer_before = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Одометр перед выездом, км (автоматически)",
+        help_text="топливо перед выездом, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
-    # Слепок норм расхода, применённых к ЭТОЙ записи
-    norm_km = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        null=True,
-        blank=True,
+    odometer_before = models.PositiveIntegerField(
+        null=False,
         editable=False,
-        help_text="Норма по пробегу, л/км, применённая к записи",
-    )
-    norm_without_pump = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Норма без насоса, л/ед.времени, применённая к записи",
-    )
-    norm_with_pump = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Норма с насосом, л/ед.времени, применённая к записи",
+        help_text="одометр перед выездом, км",
+        validators=[MaxValueValidator(999999)]
     )
 
-    # Вычисляемые пробег и расход
-    distance_km = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=True,
-        blank=True,
+    distance_km = models.PositiveIntegerField(
+        null=False,
         editable=False,
-        help_text="Пробег за поездку, км",
+        help_text="пробег, км",
+        validators=[MaxValueValidator(999999)]
     )
+
+    fuel_on_return = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        editable=False,
+        help_text="остаток топлива при возвращении, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+
     fuel_used_by_distance = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
         help_text="Топливо по пробегу, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
+
     fuel_used_with_pump = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
         help_text="Топливо при работе с насосом, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
+
     fuel_used_without_pump = models.DecimalField(
-        max_digits=8,
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
         help_text="Топливо при работе без насоса, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
-    fuel_used_total = models.DecimalField(
-        max_digits=8,
+
+    fuel_used_normal = models.DecimalField(
+        max_digits=6,
         decimal_places=3,
-        null=True,
-        blank=True,
+        null=False,
         editable=False,
-        help_text="Всего израсходовано топлива, л",
-    )
-    fuel_on_return = models.DecimalField(
-        max_digits=8,
-        decimal_places=3,
-        null=True,
-        blank=True,
-        editable=False,
-        help_text="Остаток топлива в баке при возвращении, л",
+        help_text="израсходовано по норме, л",
+        validators=[MinValueValidator(Decimal('0.000'))]
     )
 
     class Meta:
-        ordering = ["date", "departure_time"]
-
-    # ---------- ВНУТРЕННЯЯ ЛОГИКА ----------
+        ordering = ["id"]
 
     def _fill_start_values(self):
-        """
-        Заполнить odometer_before и fuel_before_departure, если они ещё не заданы.
-        Берём их:
-        - из предыдущей записи по этому же FireTruckWaybill;
-        - или из текущего состояния FireTruck (первая запись).
-        """
-        if self.odometer_before is not None and self.fuel_before_departure is not None:
-            return
+        wb = self.fire_truck_waybill
+        car = wb.car
 
-        truck = self.fire_truck_waybill.fire_truck
-
-        last = (
-            FireTruckWaybillRecord.objects
-            .filter(fire_truck_waybill=self.fire_truck_waybill)
-            .exclude(pk=self.pk)
-            .order_by('-date', '-departure_time', '-pk')
+        last_state = (
+            OdometerFuelFireTruck.objects
+            .filter(car=car)
+            .order_by('-date', '-id')
             .first()
         )
+        if not last_state:
+            raise ValidationError(
+                f"Не найдены последние показания для ПА {car.number}. "
+                "Сначала создайте запись в OdometerFuelFireTruck."
+            )
 
-        if last:
-            self.odometer_before = last.odometer_after
-            self.fuel_before_departure = last.fuel_on_return
-        else:
-            # первая запись по этому путевому листу
-            self.odometer_before = truck.odometer
-            self.fuel_before_departure = truck.fuel
+        self.odometer_before = last_state.odometer
+        self.fuel_before_departure = last_state.fuel
 
-    def _recalc(self):
-        """
-        Пересчитать нормы и расход по нормам машины и введённым минутам/одометру.
-        """
-        truck = self.fire_truck_waybill.fire_truck
+    def _apply_norms(self):
+        wb = self.fire_truck_waybill
+        car = wb.car
 
-        # выбор норм по сезону
-        if self.season == Season.WINTER:
-            self.norm_km = truck.winter_km
-            self.norm_with_pump = truck.winter_with_pump
-            self.norm_without_pump = truck.winter_without_pump
-        else:
-            self.norm_km = truck.summer_km
-            self.norm_with_pump = truck.summer_with_pump
-            self.norm_without_pump = truck.summer_without_pump
-
-        # пробег
-        self.distance_km = (self.odometer_after or 0) - (self.odometer_before or 0)
-
-        # суммарное время с/без насоса
-        minutes_with_pump = (
-            self.fire_time_with_pump +
-            self.training_time_with_pump +
-            self.shift_change_time_with_pump +
-            self.other_time_with_pump
+        norm = (
+            NormsFireTruck.objects
+            .filter(car=car, season=wb.norm_season, date__lte=wb.date)
+            .order_by('-date', '-id')
+            .first()
         )
-        minutes_without_pump = (
-            self.fire_time_without_pump +
-            self.training_time_without_pump +
-            self.shift_change_time_without_pump +
-            self.other_time_without_pump
-        )
+        if not norm:
+            raise ValidationError(
+                f"Не найдена норма для ПА {car.number}, сезон={wb.norm_season}"
+            )
 
-        # считаем расход (предполагаем, что norm_* указаны в "л за 1 минуту")
-        self.fuel_used_by_distance = self.distance_km * (self.norm_km or 0)
-        self.fuel_used_with_pump = minutes_with_pump * (self.norm_with_pump or 0)
-        self.fuel_used_without_pump = minutes_without_pump * (self.norm_without_pump or 0)
+        self.distance_km = self.odometer_after - self.odometer_before
 
-        self.fuel_used_total = (
+        self.fuel_used_by_distance = Decimal(self.distance_km) * norm.km_norm
+        self.fuel_used_with_pump = Decimal(self.time_with_pump) * norm.with_pump_norm
+        self.fuel_used_without_pump = Decimal(self.time_without_pump) * norm.without_pump_norm
+
+        self.fuel_used_normal = (
             (self.fuel_used_by_distance or 0) +
             (self.fuel_used_with_pump or 0) +
             (self.fuel_used_without_pump or 0)
         )
 
+    def _calc_fuel_on_return(self):
         self.fuel_on_return = (
-            (self.fuel_before_departure or 0) +
-            (self.fuel_refueled or 0) -
-            (self.fuel_used_total or 0)
+            (self.fuel_before_departure or Decimal('0.000'))
+            - (self.fuel_used or Decimal('0.000'))
+            + (self.fuel_refueled or Decimal('0.000'))
         )
 
-    def _update_truck_state(self):
-        """
-        Обновить одометр и остаток топлива у FireTruck по этой записи.
-        - одометр всегда растёт: ставим max(старое, odometer_after);
-        - топливо = остаток после последнего рейса (fuel_on_return).
-        """
-        truck = self.fire_truck_waybill.fire_truck
-
-        # обновляем одометр только если новое показание больше (не уменьшаем)
-        if self.odometer_after and self.odometer_after > (truck.odometer or 0):
-            truck.odometer = self.odometer_after
-
-        # остаток топлива — по последней записи
-        if self.fuel_on_return is not None:
-            truck.fuel = self.fuel_on_return
-
-        truck.save(update_fields=['odometer', 'fuel'])
-
     def save(self, *args, **kwargs):
+        from .models import OdometerFuelFireTruck
         with transaction.atomic():
             self._fill_start_values()
-            self._recalc()
+            self._apply_norms()
+            self._calc_fuel_on_return()
             super().save(*args, **kwargs)
-            self._update_truck_state()
+
+            OdometerFuelFireTruck.objects.create(
+                car=self.fire_truck_waybill.car,
+                odometer=self.odometer_after,
+                fuel=self.fuel_on_return,
+                date=self.fire_truck_waybill.date,
+                waybill=self.fire_truck_waybill,
+            )
+
+            self.fire_truck_waybill.recalc_totals()
+
+class OdometerFuelFireTruck(SoftDeleteModel):
+    car = models.ForeignKey(
+        FireTruck,
+        on_delete=models.CASCADE,
+        related_name="odometer_fuel_records",
+        null=False,
+        blank=True,
+    )
+    odometer = models.PositiveIntegerField(
+        null=False,
+        blank=True,
+        validators=[MaxValueValidator(999999)]
+    )
+    fuel = models.DecimalField(
+        max_digits=6,
+        decimal_places=3,
+        null=False,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0.000'))]
+    )
+    date = models.DateField(
+        default=date.today,
+        null=False,
+    )
+    waybill = models.ForeignKey(
+        FireTruckWaybill,
+        on_delete=models.CASCADE,
+        related_name="odometer_fuel_states",
+        null=True,
+        blank=True,
+    )
+
+    def clean(self):
+        super().clean()
+
+        if self.waybill_id:
+            if self.car_id is None:
+                self.car = self.waybill.car
+
+            last_rec = (
+                self.waybill.records
+                .order_by('-id')
+                .first()
+            )
+
+            if last_rec is None and (self.odometer is None or self.fuel is None):
+                raise ValidationError(
+                    "У путевого листа ПА нет записей. "
+                    "Укажите одометр и топливо вручную, либо создайте записи."
+                )
+
+            if self.odometer is None and last_rec is not None:
+                self.odometer = last_rec.odometer_after
+
+            if self.fuel is None and last_rec is not None:
+                self.fuel = last_rec.fuel_on_return
+
+            if self.date is None:
+                self.date = self.waybill.date
+        else:
+            errors = {}
+            if self.car_id is None:
+                errors['car'] = "Обязательно, если не указан путевой лист"
+            if self.odometer is None:
+                errors['odometer'] = "Обязательно, если не указан путевой лист"
+            if self.fuel is None:
+                errors['fuel'] = "Обязательно, если не указан путевой лист"
+
+            if errors:
+                raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.car.number} {self.date}: {self.odometer} км, {self.fuel} л"

@@ -1,4 +1,4 @@
-# app_name/auth.py
+# fuel/auth.py
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -8,35 +8,32 @@ from rest_framework import authentication, exceptions
 from .models import User
 
 
-# Настройки токенов
-JWT_SECRET = settings.SECRET_KEY              # можно вынести в отдельную константу
+JWT_SECRET = settings.SECRET_KEY
 JWT_ALGORITHM = 'HS256'
-ACCESS_TOKEN_LIFETIME_MINUTES = 30           # время жизни access-токена
+ACCESS_TOKEN_LIFETIME_MINUTES = 60
 
 
 def create_access_token(user: User, client_type: str = "web") -> str:
     """
     Создаёт JWT access-токен для пользователя.
-    client_type: "web" или "mobile" (или любые другие строки — по твоему усмотрению).
+    client_type: "web" или "mobile".
     """
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": user.id,        # кого аутентифицируем
+        "sub": user.id,
         "login": user.login,
         "role": user.role_id,
-        "client": client_type,  # тип клиента (можно использовать в правах доступа)
+        "client": client_type,
         "iat": now,
         "exp": now + timedelta(minutes=ACCESS_TOKEN_LIFETIME_MINUTES),
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    # в PyJWT>=2 возвращается строка
     return token
 
 
 def decode_access_token(token: str) -> dict:
     """
     Декодирует и проверяет access-токен.
-    Бросает jwt.ExpiredSignatureError/jwt.InvalidTokenError при проблеме.
     """
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
@@ -52,7 +49,7 @@ class JWTAuthentication(authentication.BaseAuthentication):
         auth_header = authentication.get_authorization_header(request).decode("utf-8")
 
         if not auth_header:
-            return None  # нет заголовка -> пусть другие схемы аутентификации попробуют
+            return None
 
         parts = auth_header.split()
         if len(parts) != 2 or parts[0] != self.keyword:
@@ -76,5 +73,4 @@ class JWTAuthentication(authentication.BaseAuthentication):
         except User.DoesNotExist:
             raise exceptions.AuthenticationFailed("Пользователь не найден")
 
-        # DRF ожидает (user, auth), где auth — любые данные о токене
         return user, payload

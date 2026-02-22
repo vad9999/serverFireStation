@@ -2,33 +2,37 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import (
-    RankViewSet, RoleViewSet, RoleSubstitutionViewSet,
-    DriverLicenseViewSet, UserViewSet,
-    RequiredRoleViewSet, WaybillViewSet, SignatureViewSet,
-    CarViewSet, PassengerCarViewSet, FireTruckViewSet,
-    PassengerCarWaybillViewSet, PassengerCarWaybillRecordViewSet,
-    FireTruckWaybillViewSet, FireTruckWaybillRecordViewSet,
-)
 from .views_auth import LoginView
+from .views import (
+    RoleViewSet, PermissionViewSet, UserViewSet,
+    PassengerCarViewSet, NormsPassengerCarsViewSet,
+    PassengerCarWaybillViewSet, PassengerCarWaybillRecordViewSet,
+    OdometerFuelPassengerCarViewSet,
+    FireTruckViewSet, NormsFireTruckViewSet,
+    FireTruckWaybillViewSet, FireTruckWaybillRecordViewSet,
+    OdometerFuelFireTruckViewSet,
+)
 
 router = DefaultRouter()
-router.register(r'ranks', RankViewSet)
+
+# Роли и права
 router.register(r'roles', RoleViewSet)
-router.register(r'role-substitutions', RoleSubstitutionViewSet)
-router.register(r'driver-licenses', DriverLicenseViewSet)
+router.register(r'permissions', PermissionViewSet)
+
+# Пользователи
 router.register(r'users', UserViewSet)
 
-router.register(r'required-roles', RequiredRoleViewSet)
-router.register(r'signatures', SignatureViewSet)
-router.register(r'waybills', WaybillViewSet, basename='waybill')
-
-router.register(r'cars', CarViewSet)
+# Легковой авто
 router.register(r'passenger-cars', PassengerCarViewSet)
-router.register(r'fire-trucks', FireTruckViewSet)
-
+router.register(r'passenger-car-norms', NormsPassengerCarsViewSet)
+router.register(r'passenger-car-odometer-fuel', OdometerFuelPassengerCarViewSet)
 router.register(r'passenger-car-waybills', PassengerCarWaybillViewSet)
 router.register(r'passenger-car-records', PassengerCarWaybillRecordViewSet)
+
+# Пожарный авто
+router.register(r'fire-trucks', FireTruckViewSet)
+router.register(r'fire-truck-norms', NormsFireTruckViewSet)
+router.register(r'fire-truck-odometer-fuel', OdometerFuelFireTruckViewSet)
 router.register(r'fire-truck-waybills', FireTruckWaybillViewSet)
 router.register(r'fire-truck-records', FireTruckWaybillRecordViewSet)
 
