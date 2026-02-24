@@ -2,9 +2,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 from .models import User
 from .auth import create_access_token
+from .serializers import UserSerializer   # добавляем импорт
 
 
 class LoginView(APIView):
@@ -60,3 +62,15 @@ class LoginView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class MeView(APIView):
+    """
+    GET /api/auth/me/
+    Проверка токена и получение информации о текущем пользователе.
+    """
+    permission_classes = [IsAuthenticated]  # JWTAuthentication уже стоит глобально в settings
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 # fuel/auth.py
 import jwt
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
@@ -13,10 +14,22 @@ JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_LIFETIME_MINUTES = 60
 
 
+def _password_fingerprint(user: User) -> str:
+    """
+    Возвращает отпечаток текущего пароля пользователя.
+    Основан на уже захешированном поле user.password.
+    Если пароль поменяли (как угодно) — отпечаток сменится.
+    """
+    # user.password уже хеш (make_password). Дополнительно хэшируем его,
+    # чтобы не класть в токен исходный хеш из БД.
+    return hashlib.sha256(user.password.encode('utf-8')).hexdigest()
+
+
 def create_access_token(user: User, client_type: str = "web") -> str:
     """
     Создаёт JWT access-токен для пользователя.
     client_type: "web" или "mobile".
+    В токен добавляем 'pwd_fp' — отпечаток текущего пароля.
     """
     now = datetime.now(timezone.utc)
     payload = {
@@ -24,6 +37,7 @@ def create_access_token(user: User, client_type: str = "web") -> str:
         "login": user.login,
         "role": user.role_id,
         "client": client_type,
+        "pwd_fp": _password_fingerprint(user),  # отпечаток пароля
         "iat": now,
         "exp": now + timedelta(minutes=ACCESS_TOKEN_LIFETIME_MINUTES),
     }
@@ -40,7 +54,9 @@ def decode_access_token(token: str) -> dict:
 
 class JWTAuthentication(authentication.BaseAuthentication):
     """
-    DRF-аутентификация по заголовку Authorization: Bearer <token>
+    DRF-аутентификация по заголовку Authorization: Bearer <token>.
+    Дополнительно проверяем:
+    - что пароль пользователя не менялся с момента выдачи токена.
     """
 
     keyword = "Bearer"
@@ -66,11 +82,24 @@ class JWTAuthentication(authentication.BaseAuthentication):
 
         user_id = payload.get("sub")
         if not user_id:
-            raise exceptions.AuthenticationFailed("Некорректный токен")
+            raise exceptions.AuthenticationFailed("Некорректный токен (нет sub)")
 
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             raise exceptions.AuthenticationFailed("Пользователь не найден")
+
+        # Проверка отпечатка пароля
+        token_pwd_fp = payload.get("pwd_fp")
+        if not token_pwd_fp:
+            # Токен без отпечатка пароля считаем некорректным
+            raise exceptions.AuthenticationFailed("Некорректный токен (нет pwd_fp)")
+
+        current_pwd_fp = _password_fingerprint(user)
+        if token_pwd_fp != current_pwd_fp:
+            # Пароль менялся — токен больше не действителен
+            raise exceptions.AuthenticationFailed(
+                "Пароль был изменён. Авторизуйтесь снова."
+            )
 
         return user, payload

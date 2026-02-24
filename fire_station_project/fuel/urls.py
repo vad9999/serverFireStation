@@ -2,7 +2,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views_auth import LoginView
+from .views_auth import LoginView, MeView
 from .views import (
     RoleViewSet, PermissionViewSet, UserViewSet,
     PassengerCarViewSet, NormsPassengerCarsViewSet,
@@ -38,6 +38,7 @@ router.register(r'fire-truck-records', FireTruckWaybillRecordViewSet)
 
 urlpatterns = [
     path('auth/login/', LoginView.as_view(), name='login'),
+    path('auth/me/', MeView.as_view(), name='me'),
 ]
 
 urlpatterns += router.urls
