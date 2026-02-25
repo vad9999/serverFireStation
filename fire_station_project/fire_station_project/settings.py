@@ -87,11 +87,12 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'fuel.auth.JWTAuthentication',  # <--- имя твоего приложения
+        # 'fuel.auth.JWTAuthentication',  # <--- имя твоего приложения
         # можно добавить другие схемы (SessionAuthentication и т.п., если нужно)
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # по умолчанию требуем логин
+        # 'rest_framework.permissions.IsAuthenticated',  # по умолчанию требуем логин
+        'rest_framework.permissions.AllowAny',
     ],
 }
 

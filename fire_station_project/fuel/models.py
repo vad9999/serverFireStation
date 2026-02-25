@@ -88,15 +88,15 @@ class Permission(SoftDeleteModel):
     can_update_fire_trucks = models.BooleanField(default=False)
     view_fire_trucks = models.BooleanField(default=False)
 
-    can_create_fire_truck_waybils = models.BooleanField(default=False)
-    can_delete_fire_truck_waybils = models.BooleanField(default=False)
-    can_update_fire_truck_waybils = models.BooleanField(default=False)
+    can_create_fire_truck_waybills = models.BooleanField(default=False)
+    can_delete_fire_truck_waybills = models.BooleanField(default=False)
+    can_update_fire_truck_waybills = models.BooleanField(default=False)
     can_download_fire_truck_waybills = models.BooleanField(default=False)
-    view_fire_truck_waybils = models.BooleanField(default=False)
+    view_fire_truck_waybills = models.BooleanField(default=False)
 
-    can_create_fire_truck_waybils_record = models.BooleanField(default=False)
-    can_delete_fire_truck_waybils_record = models.BooleanField(default=False)
-    can_update_fire_truck_waybils_record = models.BooleanField(default=False)
+    can_create_fire_truck_waybills_record = models.BooleanField(default=False)
+    can_delete_fire_truck_waybills_record = models.BooleanField(default=False)
+    can_update_fire_truck_waybills_record = models.BooleanField(default=False)
 
     can_create_fire_truck_norms = models.BooleanField(default=False)
     can_delete_fire_truck_norms = models.BooleanField(default=False)
@@ -117,9 +117,9 @@ class Permission(SoftDeleteModel):
     can_download_passenger_cars_waybills = models.BooleanField(default=False)
     view_passenger_cars_waybills = models.BooleanField(default=False)
 
-    can_create_passenger_cars_waybils_record = models.BooleanField(default=False)
-    can_delete_passenger_cars_waybils_record = models.BooleanField(default=False)
-    can_update_passenger_cars_waybils_record = models.BooleanField(default=False)
+    can_create_passenger_cars_waybills_record = models.BooleanField(default=False)
+    can_delete_passenger_cars_waybills_record = models.BooleanField(default=False)
+    can_update_passenger_cars_waybills_record = models.BooleanField(default=False)
 
     can_create_passenger_cars_norms = models.BooleanField(default=False)
     can_delete_passenger_cars_norms = models.BooleanField(default=False)
