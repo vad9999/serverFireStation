@@ -992,6 +992,12 @@ class FireTruckWaybillRecord(SoftDeleteModel):
         help_text="Эксплуатационная карточка",
     )
 
+    driving_route = models.CharField(
+        null=True,
+        blank=False,
+        help_text="Маршрут движения"
+    )
+
     target = models.CharField(
         max_length=255,
         null=False,
